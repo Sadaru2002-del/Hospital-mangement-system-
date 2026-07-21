@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
@@ -10,6 +11,7 @@ import { Patients } from './pages/Patients';
 const MainAppContent = () => {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [authMode, setAuthMode] = useState('login');
 
   if (loading) {
     return (
@@ -23,7 +25,10 @@ const MainAppContent = () => {
   }
 
   if (!user) {
-    return <Login />;
+    if (authMode === 'register') {
+      return <Register onNavigateLogin={() => setAuthMode('login')} />;
+    }
+    return <Login onNavigateRegister={() => setAuthMode('register')} />;
   }
 
   // Render active page based on sidebar tab selection
