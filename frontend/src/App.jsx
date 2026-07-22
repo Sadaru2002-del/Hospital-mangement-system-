@@ -3,6 +3,7 @@ import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
+import { Settings } from './pages/Settings';
 import { DashboardLayout } from './layouts/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
@@ -10,7 +11,10 @@ import { Patients } from './pages/Patients';
 
 const MainAppContent = () => {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'dashboard';
+  });
   const [authMode, setAuthMode] = useState('login');
 
   if (loading) {
@@ -24,7 +28,7 @@ const MainAppContent = () => {
     );
   }
 
-  if (!user) {
+  if (!user && activeTab !== 'settings') {
     if (authMode === 'register') {
       return <Register onNavigateLogin={() => setAuthMode('login')} />;
     }
@@ -52,6 +56,8 @@ const MainAppContent = () => {
             </div>
           </div>
         );
+      case 'settings':
+        return <Settings />;
       default:
         return <Dashboard />;
     }
