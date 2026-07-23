@@ -6,7 +6,7 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
 import { Patients } from './pages/Patients';
-import { Records } from './pages/Records';
+import { Records } from './pages/Records_history';
 import { Payments } from './pages/Payments';
 
 const MainAppContent = () => {
