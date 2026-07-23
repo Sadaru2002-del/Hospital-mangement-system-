@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
   LayoutDashboard,
   CalendarDays,
@@ -8,129 +8,109 @@ import {
   Headphones,
   LogOut,
   PhoneCall,
-} from "lucide-react";
+} from 'lucide-react';
 
-const Sidebar = ({ activeTab = "records" }) => {
-  const menuItems = [
-    {
-      title: "Dashboard",
-      icon: LayoutDashboard,
-    },
-    {
-      title: "Appointments",
-      icon: CalendarDays,
-    },
-    {
-      title: "Records",
-      icon: FileText,
-    },
-    {
-      title: "Prescriptions",
-      icon: Pill,
-    },
-    {
-      title: "Payments",
-      icon: CreditCard,
-    },
-  ];
+const menuItems = [
+  { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
+  { id: 'appointments', name: 'Appointments', icon: CalendarDays },
+  { id: 'records', name: 'Records', icon: FileText },
+  { id: 'prescriptions', name: 'Prescriptions', icon: Pill },
+  { id: 'payments', name: 'Payments', icon: CreditCard },
+];
 
+export const Sidebar = ({
+  activeTab,
+  setActiveTab,
+  userName = 'Imasha',
+  userAvatar = 'https://i.pravatar.cc/150?img=12',
+  darkMode = false,
+}) => {
   return (
-    <aside className="w-[285px] bg-white border-r border-gray-200 flex flex-col justify-between min-h-screen">
-
-      {/* Top Section */}
+    <aside
+      className={`w-[285px] flex flex-col justify-between min-h-screen border-r transition-colors ${
+        darkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-gray-200'
+      }`}
+    >
       <div>
-
-        {/* Logo */}
         <div className="px-6 pt-7 pb-4">
-          <h1 className="text-3xl font-bold text-[#0F4C81]">
+          <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-[#0F4C81]'}`}>
             Medimate
           </h1>
-          <p className="text-[#0F4C81] font-medium">
+          <p className={`font-medium ${darkMode ? 'text-slate-300' : 'text-[#0F4C81]'}`}>
             Healthcare
           </p>
         </div>
 
-        {/* User Card */}
         <div className="px-5">
-          <div className="bg-[#F6F8FC] rounded-2xl p-4 flex items-center gap-4">
-
+          <div
+            className={`rounded-2xl p-4 flex items-center gap-4 ${
+              darkMode ? 'bg-slate-900' : 'bg-[#F6F8FC]'
+            }`}
+          >
             <img
-              src="https://i.pravatar.cc/150?img=12"
+              src={userAvatar}
               alt="patient"
-              className="w-14 h-14 rounded-full border-2 border-blue-700"
+              className="w-14 h-14 rounded-full border-2 border-blue-700 object-cover"
             />
-
             <div>
-              <p className="text-sm text-gray-500">
-                Welcome,
-              </p>
-
-              <h3 className="font-bold text-gray-800 text-lg">
-                Imasha
+              <p className={`text-sm ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>Welcome,</p>
+              <h3 className={`font-bold text-lg ${darkMode ? 'text-slate-100' : 'text-gray-800'}`}>
+                {userName}
               </h3>
             </div>
-
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="mt-10 px-5 space-y-2">
-
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab.toLowerCase() === item.title.toLowerCase();
-
+            const isActive = activeTab === item.id;
             return (
               <button
-                key={item.title}
-                className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300
-                  ${isActive
-                    ? "bg-[#1E73E8] text-white shadow-lg"
-                    : "text-[#21496B] hover:bg-blue-50"
-                  }`}
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-300 ${
+                  isActive
+                    ? 'bg-[#1E73E8] text-white shadow-lg'
+                    : darkMode
+                    ? 'text-slate-300 hover:bg-slate-900'
+                    : 'text-[#21496B] hover:bg-blue-50'
+                }`}
               >
                 <Icon size={22} />
-                <span className="font-semibold text-[17px]">
-                  {item.title}
-                </span>
+                <span className="font-semibold text-[17px]">{item.name}</span>
               </button>
             );
           })}
-
         </nav>
-
       </div>
 
-      {/* Bottom Section */}
       <div className="px-5 pb-6">
-
-        <div className="border-t pt-6">
-
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-[#21496B] hover:bg-gray-100 transition">
+        <div className={`border-t pt-6 ${darkMode ? 'border-slate-800' : 'border-gray-200'}`}>
+          <button
+            onClick={() => setActiveTab('support')}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition ${
+              darkMode ? 'text-slate-300 hover:bg-slate-900' : 'text-[#21496B] hover:bg-gray-100'
+            }`}
+          >
             <Headphones size={22} />
-            <span className="font-semibold">
-              Support
-            </span>
+            <span className="font-semibold">Support</span>
           </button>
 
-          <button className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition mt-1">
+          <button
+            onClick={() => setActiveTab('logout')}
+            className="w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition mt-1"
+          >
             <LogOut size={22} />
-            <span className="font-semibold">
-              Logout
-            </span>
+            <span className="font-semibold">Logout</span>
           </button>
 
           <button className="w-full mt-6 bg-red-700 hover:bg-red-800 text-white rounded-xl py-4 flex justify-center items-center gap-3 font-semibold text-lg transition">
             <PhoneCall size={22} />
             Call Doctor
           </button>
-
         </div>
-
       </div>
-
     </aside>
   );
 };
-
-export default Sidebar;
