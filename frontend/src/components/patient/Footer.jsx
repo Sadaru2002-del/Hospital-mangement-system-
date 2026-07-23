@@ -1,52 +1,18 @@
-import React from "react";
-import { HeartPulse } from "lucide-react";
+import React from 'react';
 
-const Footer = () => {
+export const Footer = ({ darkMode = false }) => {
   return (
-    <footer className="bg-white border-t border-gray-200 px-8 py-5">
-      <div className="flex flex-col lg:flex-row items-center justify-between gap-5">
-
-        {/* Left */}
-        <div>
-          <p className="text-sm text-gray-500 mt-2">
-            © {new Date().getFullYear()} Medimate Healthcare. All Rights Reserved.
-          </p>
-        </div>
-
-        {/* Center */}
-        <div className="flex items-center gap-8 text-sm font-medium text-gray-600">
-          <a
-            href="#"
-            className="hover:text-blue-600 transition"
-          >
-            Privacy Policy
-          </a>
-
-          <a
-            href="#"
-            className="hover:text-blue-600 transition"
-          >
-            Terms & Conditions
-          </a>
-
-          <a
-            href="#"
-            className="hover:text-blue-600 transition"
-          >
-            Contact
-          </a>
-
-          <a
-            href="#"
-            className="hover:text-blue-600 transition"
-          >
-            Help Center
-          </a>
-        </div>
-
+    <footer
+      className={`flex items-center justify-between px-8 py-5 border-t text-xs ${
+        darkMode ? 'border-slate-800 text-slate-500' : 'border-slate-100 text-slate-400'
+      }`}
+    >
+      <span>© 2024 CareConnect Health Systems. All rights reserved.</span>
+      <div className="flex gap-6">
+        <a href="#" className={darkMode ? 'hover:text-slate-300' : 'hover:text-slate-600'}>Privacy</a>
+        <a href="#" className={darkMode ? 'hover:text-slate-300' : 'hover:text-slate-600'}>Terms</a>
+        <a href="#" className={darkMode ? 'hover:text-slate-300' : 'hover:text-slate-600'}>Audit Log</a>
       </div>
     </footer>
   );
 };
-
-export default Footer;

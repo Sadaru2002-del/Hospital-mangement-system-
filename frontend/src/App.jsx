@@ -6,6 +6,8 @@ import { DashboardLayout } from './layouts/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
 import { Patients } from './pages/Patients';
+import { Records } from './pages/Records';
+import { Payments } from './pages/Payments';
 
 const MainAppContent = () => {
   const { user, loading } = useAuth();
@@ -24,6 +26,16 @@ const MainAppContent = () => {
 
   if (!user) {
     return <Login />;
+  }
+
+  // Records and Payments render their own sidebar/topbar/footer, so they're
+  // shown standalone (not nested inside DashboardLayout, which has its own
+  // Navbar + Sidebar).
+  if (activeTab === 'records') {
+    return <Records activeTab={activeTab} setActiveTab={setActiveTab} />;
+  }
+  if (activeTab === 'payments') {
+    return <Payments activeTab={activeTab} setActiveTab={setActiveTab} />;
   }
 
   // Render active page based on sidebar tab selection

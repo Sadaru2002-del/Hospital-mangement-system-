@@ -11,6 +11,7 @@ import {
 import DashboardCard from "../../components/patient/DashboardCard";
 import AppointmentTable from "../../components/patient/AppointmentTable";
 
+
 const Dashboard = () => {
     return (
         <div>
