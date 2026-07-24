@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
-import { DashboardLayout } from './layouts/DashboardLayout';
+import { Register } from './pages/Register';
+import { Settings } from './pages/Settings';
+import PatientLayout from './layouts/PatientLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
 import { Patients } from './pages/Patients';
@@ -12,7 +14,11 @@ import { Payments } from './pages/patient/Payments';
 
 const MainAppContent = () => {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('tab') || 'dashboard';
+  });
+  const [authMode, setAuthMode] = useState('login');
 
   if (loading) {
     return (
@@ -25,8 +31,11 @@ const MainAppContent = () => {
     );
   }
 
-  if (!user) {
-    return <Login />;
+  if (!user && activeTab !== 'settings') {
+    if (authMode === 'register') {
+      return <Register onNavigateLogin={() => setAuthMode('login')} />;
+    }
+    return <Login onNavigateRegister={() => setAuthMode('register')} />;
   }
 
   // Records, Records history, and Payments render their own sidebar/topbar/footer,
@@ -62,15 +71,17 @@ const MainAppContent = () => {
             </div>
           </div>
         );
+      case 'settings':
+        return <Settings />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab}>
+    <PatientLayout>
       {renderActivePage()}
-    </DashboardLayout>
+    </PatientLayout>
   );
 };
 

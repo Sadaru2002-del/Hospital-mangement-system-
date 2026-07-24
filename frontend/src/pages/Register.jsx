@@ -1,24 +1,20 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import heroImg from '../assets/hero.png';
-export const Login = ({ onNavigateRegister }) => {
+
+export const Register = ({ onNavigateLogin }) => {
   const { loginUser } = useAuth();
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('Admin'); // Default to Admin
+  const [role, setRole] = useState('Patient'); // Default to Patient
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState(false);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email) {
-      setEmailError(true);
-      return;
-    }
-    setEmailError(false);
-    
+    // Simulate register & auto-login
     loginUser({
-      name: role === 'Doctor' ? 'Dr. Sarah Connor' : role === 'Admin' ? 'Alex Mercer' : 'John Doe',
+      name: name || 'New User',
       email,
       role: role.toLowerCase(),
     });
@@ -56,7 +52,7 @@ export const Login = ({ onNavigateRegister }) => {
               <h2 className="text-[#0f4a9c] text-lg font-bold">Medimate Healthcare</h2>
             </div>
             
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Welcome Back</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-6">Create an Account</h1>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               
@@ -110,34 +106,43 @@ export const Login = ({ onNavigateRegister }) => {
                 </div>
               </div>
 
+              {/* Full Name */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:border-blue-500"
+                  placeholder="John Doe"
+                />
+              </div>
+
               {/* Email */}
               <div>
                 <label className="block text-[11px] font-bold text-gray-700 mb-1">Email Address</label>
                 <input
                   type="email"
+                  required
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setEmailError(false); }}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-[13px] focus:outline-none focus:border-blue-500"
                   placeholder="examples@gmail.com"
                 />
-                {emailError && (
-                  <p className="text-[9px] text-red-500 mt-1">Email not required Please try again</p>
-                )}
               </div>
 
               {/* Password */}
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <label className="block text-[11px] font-bold text-gray-700">Password</label>
-                  <a href="#" className="text-[11px] font-bold text-[#0f4a9c] hover:underline">Forgot Password?</a>
-                </div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1">Password</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 text-[13px] focus:outline-none focus:border-blue-500 tracking-wider placeholder:tracking-wider placeholder:text-gray-300 text-gray-600"
-                    placeholder="••••••••••••••••8"
+                    placeholder="••••••••••••••••"
                   />
                   <button 
                     type="button" 
@@ -162,27 +167,12 @@ export const Login = ({ onNavigateRegister }) => {
                 </div>
               </div>
 
-              {/* Checkbox */}
-              <div className="flex items-center mt-2">
-                <input
-                  id="remember"
-                  type="checkbox"
-                  className="w-3.5 h-3.5 border-gray-300 rounded text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="remember" className="ml-2 text-[11px] text-gray-500">
-                  Keep me signed in for 30 days
-                </label>
-              </div>
-
               {/* Submit */}
               <button
                 type="submit"
-                className="w-full bg-[#055dc8] hover:bg-blue-800 text-white font-medium py-2.5 rounded-md flex justify-center items-center mt-4 transition-colors"
+                className="w-full bg-[#055dc8] hover:bg-blue-800 text-white font-medium py-2.5 rounded-md flex justify-center items-center mt-6 transition-colors"
               >
-                Login
-                <svg className="w-4 h-4 ml-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
+                Register
               </button>
             </form>
 
@@ -208,8 +198,10 @@ export const Login = ({ onNavigateRegister }) => {
             </div>
 
             <p className="text-center text-[12px] text-gray-500">
-              Don't have an account?{' '}
-              <button onClick={(e) => { e.preventDefault(); onNavigateRegister && onNavigateRegister(); }} className="text-[#0f4a9c] font-semibold hover:underline">Register here</button>
+              Already have an account?{' '}
+              <button onClick={(e) => { e.preventDefault(); onNavigateLogin && onNavigateLogin(); }} className="text-[#0f4a9c] font-semibold hover:underline">
+                Login here
+              </button>
             </p>
 
           </div>
@@ -218,4 +210,3 @@ export const Login = ({ onNavigateRegister }) => {
     </div>
   );
 };
-
