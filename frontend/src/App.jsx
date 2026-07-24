@@ -8,6 +8,9 @@ import PatientLayout from './layouts/PatientLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
 import { Patients } from './pages/Patients';
+import { Records } from './pages/patient/Records';
+import { RecordsHistory } from './pages/patient/Records_history';
+import { Payments } from './pages/patient/Payments';
 
 const MainAppContent = () => {
   const { user, loading } = useAuth();
@@ -33,6 +36,18 @@ const MainAppContent = () => {
       return <Register onNavigateLogin={() => setAuthMode('login')} />;
     }
     return <Login onNavigateRegister={() => setAuthMode('register')} />;
+  }
+
+  // Records, Records history, and Payments render their own sidebar/topbar/footer,
+  // so they're shown standalone (not nested inside DashboardLayout).
+  if (activeTab === 'records') {
+    return <Records activeTab={activeTab} setActiveTab={setActiveTab} />;
+  }
+  if (activeTab === 'records-history') {
+    return <RecordsHistory activeTab={activeTab} setActiveTab={setActiveTab} />;
+  }
+  if (activeTab === 'payments') {
+    return <Payments activeTab={activeTab} setActiveTab={setActiveTab} />;
   }
 
   // Render active page based on sidebar tab selection
