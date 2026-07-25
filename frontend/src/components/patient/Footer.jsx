@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
-import { Register } from './pages/Register';
-import { Settings } from './pages/Settings';
-import PatientLayout from './layouts/PatientLayout';
+import { DashboardLayout } from './layouts/DashboardLayout';
 import { Dashboard } from './pages/Dashboard';
 import { Appointments } from './pages/Appointments';
 import { Patients } from './pages/Patients';
@@ -14,11 +12,7 @@ import { Payments } from './pages/patient/Payments';
 
 const MainAppContent = () => {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('tab') || 'dashboard';
-  });
-  const [authMode, setAuthMode] = useState('login');
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   if (loading) {
     return (
@@ -31,11 +25,8 @@ const MainAppContent = () => {
     );
   }
 
-  if (!user && activeTab !== 'settings') {
-    if (authMode === 'register') {
-      return <Register onNavigateLogin={() => setAuthMode('login')} />;
-    }
-    return <Login onNavigateRegister={() => setAuthMode('register')} />;
+  if (!user) {
+    return <Login />;
   }
 
   // Records, Records history, and Payments render their own sidebar/topbar/footer,
@@ -71,26 +62,18 @@ const MainAppContent = () => {
             </div>
           </div>
         );
-      case 'settings':
-        return <Settings />;
       default:
         return <Dashboard />;
     }
   };
 
   return (
-    <PatientLayout>
+    <DashboardLayout activeTab={activeTab} setActiveTab={setActiveTab}>
       {renderActivePage()}
-    </PatientLayout>
+    </DashboardLayout>
   );
 };
 
-/**
- * App Component
- *
- * The entry point of the React application.
- * Wraps the app in AuthProvider and renders the tab-driven main content.
- */
 function App() {
   return (
     <AuthProvider>
