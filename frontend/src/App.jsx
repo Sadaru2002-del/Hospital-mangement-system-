@@ -85,6 +85,12 @@ const MainAppContent = () => {
   );
 };
 
+/**
+ * App Component
+ *
+ * The entry point of the React application.
+ * Wraps the app in AuthProvider and renders the tab-driven main content.
+ */
 function App() {
   return (
     <AuthProvider>
