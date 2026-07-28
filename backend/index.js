@@ -5,19 +5,24 @@ import connectDB from "./config/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 
+// Load environment variables
 dotenv.config();
+
+// Connect to MongoDB
 connectDB();
 
 const app = express();
 
+// Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// API Routes
-app.use("/api/users", userRoutes);
+// Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes || authRoutes);
 
+// Health check
 app.get("/api", (req, res) => {
   res.json({
     success: true,
@@ -25,7 +30,7 @@ app.get("/api", (req, res) => {
   });
 });
 
-// Global Error Handler
+// Global error handler
 app.use((err, req, res, next) => {
   const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
   res.status(statusCode).json({
