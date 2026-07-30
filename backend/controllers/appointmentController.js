@@ -1,4 +1,6 @@
 import Appointment from "../models/Appointment.js";
+import Patient from "../models/Patient.js";
+import User from "../models/User.js";
 
 /**
  * @desc    Book a new appointment
@@ -8,7 +10,9 @@ import Appointment from "../models/Appointment.js";
 export const createAppointment = async (req, res) => {
   try {
     const {
+      patientId,
       patientName,
+      doctorId,
       doctor,
       department,
       date,
@@ -24,22 +28,45 @@ export const createAppointment = async (req, res) => {
     const finalDate = date || appointmentDate;
     const finalTime = time || appointmentTime;
 
-    if (!finalDate || !finalTime) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Date and time are required for booking an appointment." });
+    if (!finalDate && !appointmentDate) {
+      return res.status(400).json({
+        success: false,
+        message: "Date / Appointment Date is required for booking an appointment.",
+      });
+    }
+
+    // Determine patient ID / reference
+    let targetPatientId = patientId || req.user._id;
+    if (!patientId && req.user.role === "patient") {
+      try {
+        const patientProfile = await Patient.findOne({ user: req.user._id });
+        if (patientProfile) {
+          targetPatientId = patientProfile._id;
+        }
+      } catch (err) {
+        // Fall back to req.user._id
+      }
+    }
+
+    // Determine doctor ID / reference
+    let targetDoctor = doctorId || doctor || "Dr. Sarah Connor";
+    if (doctorId && typeof doctorId === "string" && doctorId.match(/^[0-9a-fA-F]{24}$/)) {
+      const docUser = await User.findById(doctorId);
+      if (docUser) {
+        targetDoctor = docUser._id;
+      }
     }
 
     const appointment = new Appointment({
-      patient: req.user._id,
+      patient: targetPatientId,
       patientName: patientName || req.user.name || "Patient",
-      doctor: doctor || "Dr. Sarah Connor",
+      doctor: targetDoctor,
       department: department || "Cardiology",
       date: finalDate,
-      appointmentDate: new Date(finalDate),
-      time: finalTime,
-      appointmentTime: finalTime,
-      reason: reason || symptoms || "",
+      appointmentDate: finalDate ? new Date(finalDate) : new Date(),
+      time: finalTime || "10:00 AM",
+      appointmentTime: finalTime || "10:00 AM",
+      reason: reason || symptoms || "General Consultation",
       symptoms: symptoms || "",
       type: type || "consultation",
       notes: notes || "",
@@ -73,9 +100,18 @@ export const getAppointments = async (req, res) => {
 
     let query = {};
 
-    // Patient receives only their own appointments; Staff/Admin can view all or filter by patientId
-    if (!["admin", "doctor", "receptionist"].includes(req.user.role)) {
-      query.patient = req.user._id;
+    // Role-based access filtering
+    if (req.user.role === "patient") {
+      let patientIds = [req.user._id];
+      try {
+        const patientProfile = await Patient.findOne({ user: req.user._id });
+        if (patientProfile) {
+          patientIds.push(patientProfile._id);
+        }
+      } catch (err) {}
+      query.patient = { $in: patientIds };
+    } else if (req.user.role === "doctor") {
+      query.doctor = { $in: [req.user._id, req.user.name] };
     } else if (patientId) {
       query.patient = patientId;
     }
@@ -107,7 +143,8 @@ export const getAppointments = async (req, res) => {
 
     const total = await Appointment.countDocuments(query);
     const appointments = await Appointment.find(query)
-      .populate("patient", "name email phone")
+      .populate("patient", "name email phone age gender bloodGroup")
+      .populate("doctor", "name email phone")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum);
@@ -135,8 +172,17 @@ export const getAppointments = async (req, res) => {
  */
 export const getMyAppointments = async (req, res) => {
   try {
-    const appointments = await Appointment.find({ patient: req.user._id })
+    let patientIds = [req.user._id];
+    try {
+      const patientProfile = await Patient.findOne({ user: req.user._id });
+      if (patientProfile) {
+        patientIds.push(patientProfile._id);
+      }
+    } catch (err) {}
+
+    const appointments = await Appointment.find({ patient: { $in: patientIds } })
       .populate("patient", "name email phone")
+      .populate("doctor", "name email phone")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -159,24 +205,33 @@ export const getMyAppointments = async (req, res) => {
  */
 export const getAppointmentById = async (req, res) => {
   try {
-    const appointment = await Appointment.findById(req.params.id).populate(
-      "patient",
-      "name email phone"
-    );
+    const appointment = await Appointment.findById(req.params.id)
+      .populate("patient", "name age gender phone email")
+      .populate("doctor", "name email phone");
 
     if (!appointment) {
       return res.status(404).json({ success: false, message: "Appointment not found" });
     }
 
     // Verify ownership or staff privileges
-    if (
-      appointment.patient &&
-      appointment.patient._id.toString() !== req.user._id.toString() &&
-      !["admin", "doctor", "receptionist"].includes(req.user.role)
-    ) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Access denied: Not authorized for this appointment" });
+    if (req.user.role === "patient") {
+      let isOwner = appointment.patient && appointment.patient._id.toString() === req.user._id.toString();
+      if (!isOwner) {
+        const patientProfile = await Patient.findOne({ user: req.user._id });
+        if (patientProfile && appointment.patient && appointment.patient._id.toString() === patientProfile._id.toString()) {
+          isOwner = true;
+        }
+      }
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: "Access denied: Not authorized for this appointment" });
+      }
+    } else if (req.user.role === "doctor") {
+      const isAssignedDoctor =
+        appointment.doctor &&
+        (appointment.doctor._id?.toString() === req.user._id.toString() || appointment.doctor === req.user.name);
+      if (!isAssignedDoctor && !["admin", "receptionist"].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: "Access denied: Not authorized for this appointment" });
+      }
     }
 
     res.json({
@@ -204,28 +259,30 @@ export const updateAppointment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Appointment not found" });
     }
 
-    if (
-      appointment.patient.toString() !== req.user._id.toString() &&
-      !["admin", "doctor", "receptionist"].includes(req.user.role)
-    ) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Access denied: Not authorized to update this appointment" });
+    // Authorization check
+    if (req.user.role === "patient") {
+      let isOwner = appointment.patient.toString() === req.user._id.toString();
+      if (!isOwner) {
+        const patientProfile = await Patient.findOne({ user: req.user._id });
+        if (patientProfile && appointment.patient.toString() === patientProfile._id.toString()) {
+          isOwner = true;
+        }
+      }
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: "Access denied" });
+      }
     }
 
-    const { patientName, doctor, department, date, time, reason, status, notes } = req.body;
+    const { patientName, doctor, doctorId, department, date, time, appointmentDate, reason, status, notes } = req.body;
 
     if (patientName !== undefined) appointment.patientName = patientName;
-    if (doctor !== undefined) appointment.doctor = doctor;
+    if (doctorId !== undefined) appointment.doctor = doctorId;
+    else if (doctor !== undefined) appointment.doctor = doctor;
     if (department !== undefined) appointment.department = department;
-    if (date !== undefined) {
-      appointment.date = date;
-      appointment.appointmentDate = new Date(date);
-    }
-    if (time !== undefined) {
-      appointment.time = time;
-      appointment.appointmentTime = time;
-    }
+    if (date !== undefined) appointment.date = date;
+    if (appointmentDate !== undefined) appointment.appointmentDate = new Date(appointmentDate);
+    else if (date !== undefined) appointment.appointmentDate = new Date(date);
+    if (time !== undefined) appointment.time = time;
     if (reason !== undefined) appointment.reason = reason;
     if (status !== undefined) appointment.status = status;
     if (notes !== undefined) appointment.notes = notes;
@@ -258,13 +315,18 @@ export const deleteAppointment = async (req, res) => {
       return res.status(404).json({ success: false, message: "Appointment not found" });
     }
 
-    if (
-      appointment.patient.toString() !== req.user._id.toString() &&
-      !["admin", "doctor", "receptionist"].includes(req.user.role)
-    ) {
-      return res
-        .status(403)
-        .json({ success: false, message: "Access denied: Not authorized to delete this appointment" });
+    // Authorization check
+    if (req.user.role === "patient") {
+      let isOwner = appointment.patient.toString() === req.user._id.toString();
+      if (!isOwner) {
+        const patientProfile = await Patient.findOne({ user: req.user._id });
+        if (patientProfile && appointment.patient.toString() === patientProfile._id.toString()) {
+          isOwner = true;
+        }
+      }
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: "Access denied to delete this appointment" });
+      }
     }
 
     await appointment.deleteOne();
@@ -280,4 +342,3 @@ export const deleteAppointment = async (req, res) => {
     });
   }
 };
-
