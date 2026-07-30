@@ -1,15 +1,25 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 /**
- * Fetch appointments (user specific or all if admin/doctor)
+ * Fetch appointments (user specific or all if admin/doctor, supports filtering parameters)
  */
-export const fetchAppointments = async (token) => {
+export const fetchAppointments = async (token, params = {}) => {
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}/appointments`, {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach((key) => {
+    if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+      queryParams.append(key, params[key]);
+    }
+  });
+
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/appointments${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
     method: 'GET',
     headers,
   });
@@ -17,6 +27,28 @@ export const fetchAppointments = async (token) => {
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.message || 'Failed to fetch appointments');
+  }
+
+  return response.json();
+};
+
+/**
+ * Fetch logged-in user's appointments
+ */
+export const fetchMyAppointments = async (token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}/appointments/my`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to fetch user appointments');
   }
 
   return response.json();
@@ -89,3 +121,4 @@ export const deleteAppointment = async (id, token) => {
 
   return response.json();
 };
+

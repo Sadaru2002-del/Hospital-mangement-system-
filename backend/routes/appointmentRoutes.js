@@ -2,6 +2,7 @@ import express from "express";
 import {
   createAppointment,
   getAppointments,
+  getMyAppointments,
   getAppointmentById,
   updateAppointment,
   deleteAppointment,
@@ -15,6 +16,7 @@ router.use(protect);
 
 // Routes
 router.route("/").post(createAppointment).get(getAppointments);
+router.route("/my").get(getMyAppointments);
 router
   .route("/:id")
   .get(getAppointmentById)
@@ -22,3 +24,4 @@ router
   .delete(deleteAppointment);
 
 export default router;
+

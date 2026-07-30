@@ -456,7 +456,7 @@ export const Appointments = ({ darkMode = false }) => {
               <div key={appt._id} className="py-3 flex items-center justify-between">
                 <div>
                   <p className={`font-semibold ${headingColor}`}>
-                    {appt.doctor} — {appt.department}
+                    {typeof appt.doctor === 'object' ? appt.doctor?.name || 'Doctor' : appt.doctor} — {appt.department || 'General'}
                   </p>
                   <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
                     📅 {appt.date} at ⏰ {appt.time} | Status: <span className="font-semibold text-blue-500">{appt.status}</span>
