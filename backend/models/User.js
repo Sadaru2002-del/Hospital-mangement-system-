@@ -1,6 +1,5 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcrypt';
-import validator from 'validator';
+import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
   {
@@ -15,7 +14,7 @@ const userSchema = new mongoose.Schema(
       required: [true, 'Please provide an email'],
       unique: true,
       lowercase: true,
-      validate: [validator.isEmail, 'Please provide a valid email']
+      match: [/\S+@\S+\.\S+/, 'Please provide a valid email']
     },
     password: {
       type: String,

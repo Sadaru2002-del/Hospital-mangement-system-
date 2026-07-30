@@ -101,7 +101,30 @@ export const updateAppointment = async (id, updateData, token) => {
 };
 
 /**
- * Delete / cancel an appointment
+ * Cancel an appointment (Soft cancellation)
+ */
+export const cancelAppointment = async (id, cancellationReason, token) => {
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}/appointments/${id}/cancel`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ cancellationReason }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || 'Failed to cancel appointment');
+  }
+
+  return response.json();
+};
+
+/**
+ * Delete / hard cancel an appointment
  */
 export const deleteAppointment = async (id, token) => {
   const headers = { 'Content-Type': 'application/json' };
@@ -121,4 +144,5 @@ export const deleteAppointment = async (id, token) => {
 
   return response.json();
 };
+
 

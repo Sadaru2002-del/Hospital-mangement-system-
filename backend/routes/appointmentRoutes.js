@@ -5,6 +5,7 @@ import {
   getMyAppointments,
   getAppointmentById,
   updateAppointment,
+  cancelAppointment,
   deleteAppointment,
 } from "../controllers/appointmentController.js";
 import { protect } from "../middleware/authMiddleware.js";
@@ -17,6 +18,7 @@ router.use(protect);
 // Routes
 router.route("/").post(createAppointment).get(getAppointments);
 router.route("/my").get(getMyAppointments);
+router.route("/:id/cancel").put(cancelAppointment).patch(cancelAppointment);
 router
   .route("/:id")
   .get(getAppointmentById)
@@ -24,4 +26,5 @@ router
   .delete(deleteAppointment);
 
 export default router;
+
 

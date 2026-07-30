@@ -269,22 +269,60 @@ export const updateAppointment = async (req, res) => {
         }
       }
       if (!isOwner) {
-        return res.status(403).json({ success: false, message: "Access denied" });
+        return res.status(403).json({ success: false, message: "Access denied: Not authorized to update this appointment" });
+      }
+    } else if (req.user.role === "doctor") {
+      const isAssignedDoctor =
+        appointment.doctor &&
+        (appointment.doctor._id?.toString() === req.user._id.toString() || appointment.doctor === req.user.name);
+      if (!isAssignedDoctor && !["admin", "receptionist"].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: "Access denied: Not authorized to update this appointment" });
       }
     }
 
-    const { patientName, doctor, doctorId, department, date, time, appointmentDate, reason, status, notes } = req.body;
+    const {
+      patientName,
+      doctor,
+      doctorId,
+      department,
+      date,
+      time,
+      appointmentDate,
+      appointmentTime,
+      reason,
+      symptoms,
+      type,
+      status,
+      notes,
+    } = req.body;
 
     if (patientName !== undefined) appointment.patientName = patientName;
     if (doctorId !== undefined) appointment.doctor = doctorId;
     else if (doctor !== undefined) appointment.doctor = doctor;
     if (department !== undefined) appointment.department = department;
+
     if (date !== undefined) appointment.date = date;
     if (appointmentDate !== undefined) appointment.appointmentDate = new Date(appointmentDate);
     else if (date !== undefined) appointment.appointmentDate = new Date(date);
+
     if (time !== undefined) appointment.time = time;
+    if (appointmentTime !== undefined) appointment.appointmentTime = appointmentTime;
+
     if (reason !== undefined) appointment.reason = reason;
-    if (status !== undefined) appointment.status = status;
+    if (symptoms !== undefined) appointment.symptoms = symptoms;
+    if (type !== undefined) appointment.type = type;
+
+    if (status !== undefined) {
+      const validStatuses = ["Scheduled", "Completed", "Cancelled", "pending", "confirmed", "no-show"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ success: false, message: `Invalid status value. Must be one of: ${validStatuses.join(", ")}` });
+      }
+      appointment.status = status;
+      if (status === "Cancelled" || status === "cancelled") {
+        appointment.cancelledBy = req.user._id;
+      }
+    }
+
     if (notes !== undefined) appointment.notes = notes;
 
     const updatedAppointment = await appointment.save();
@@ -303,7 +341,64 @@ export const updateAppointment = async (req, res) => {
 };
 
 /**
- * @desc    Cancel or delete an appointment
+ * @desc    Cancel an appointment (Soft cancellation)
+ * @route   PUT /api/appointments/:id/cancel
+ * @access  Private
+ */
+export const cancelAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+
+    if (!appointment) {
+      return res.status(404).json({ success: false, message: "Appointment not found" });
+    }
+
+    // Authorization check
+    if (req.user.role === "patient") {
+      let isOwner = appointment.patient.toString() === req.user._id.toString();
+      if (!isOwner) {
+        const patientProfile = await Patient.findOne({ user: req.user._id });
+        if (patientProfile && appointment.patient.toString() === patientProfile._id.toString()) {
+          isOwner = true;
+        }
+      }
+      if (!isOwner) {
+        return res.status(403).json({ success: false, message: "Access denied to cancel this appointment" });
+      }
+    } else if (req.user.role === "doctor") {
+      const isAssignedDoctor =
+        appointment.doctor &&
+        (appointment.doctor._id?.toString() === req.user._id.toString() || appointment.doctor === req.user.name);
+      if (!isAssignedDoctor && !["admin", "receptionist"].includes(req.user.role)) {
+        return res.status(403).json({ success: false, message: "Access denied to cancel this appointment" });
+      }
+    }
+
+    const { cancellationReason } = req.body;
+
+    appointment.status = "Cancelled";
+    appointment.cancelledBy = req.user._id;
+    if (cancellationReason) {
+      appointment.cancellationReason = cancellationReason;
+    }
+
+    const cancelledAppointment = await appointment.save();
+
+    res.json({
+      success: true,
+      message: "Appointment cancelled successfully",
+      appointment: cancelledAppointment,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to cancel appointment",
+    });
+  }
+};
+
+/**
+ * @desc    Delete or cancel an appointment
  * @route   DELETE /api/appointments/:id
  * @access  Private
  */
