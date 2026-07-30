@@ -1,38 +1,46 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
+import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
+import validator from 'validator';
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Name is required"],
+      required: [true, 'Please provide a name'],
       trim: true,
+      maxlength: [50, 'Name cannot be more than 50 characters']
     },
     email: {
       type: String,
-      required: [true, "Email is required"],
+      required: [true, 'Please provide an email'],
       unique: true,
       lowercase: true,
-      trim: true,
+      validate: [validator.isEmail, 'Please provide a valid email']
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: [6, "Password must be at least 6 characters"],
+      required: [true, 'Please provide a password'],
+      minlength: [8, 'Password must be at least 8 characters'],
+      select: false, // Prevents password from being returned in queries by default
     },
     role: {
       type: String,
       required: true,
-      enum: ["admin", "doctor", "receptionist", "patient"],
-      default: "patient",
+      enum: {
+        values: ['admin', 'doctor', 'receptionist', 'patient'],
+        message: '{VALUE} is not a supported role'
+      },
+      default: 'patient',
     },
     phone: {
       type: String,
-      trim: true,
-    },
-    bio: {
-      type: String,
-      trim: true,
+      validate: {
+        validator: function(v) {
+          // simple regex for validating basic phone numbers (can be adjusted based on region)
+          return !v || /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/.test(v);
+        },
+        message: props => `${props.value} is not a valid phone number!`
+      }
     },
   },
   {
@@ -40,19 +48,26 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
+// Password Hashing middleware (bcrypt)
+userSchema.pre('save', async function (next) {
+  // Only hash the password if it has been modified (or is new)
+  if (!this.isModified('password')) return next();
+  
+  try {
+    // Generate salt with 10 rounds
+    const salt = await bcrypt.genSalt(10);
+    // Hash password with the salt
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
-// Method to compare entered password with hashed password
-userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+// Method to compare passwords during authentication
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
+const User = mongoose.model('User', userSchema);
 export default User;
