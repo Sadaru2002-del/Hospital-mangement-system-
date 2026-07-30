@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Clock, Ban, Search as SearchLucide } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, Ban, Search as SearchLucide, Calendar } from 'lucide-react';
 import { MicIcon, UserIcon, ArrowRightIcon, CheckCircleIcon, XIcon } from '../../components/patient/icons';
+import { useAuth } from '../../hooks/useAuth';
+import { fetchAppointments, createAppointment, deleteAppointment } from '../../services/appointmentService';
 
 const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
@@ -41,18 +43,43 @@ function buildCalendarGrid(year, month) {
 }
 
 export const Appointments = ({ darkMode = false }) => {
-  const [patientName, setPatientName] = useState('');
+  const { user } = useAuth();
+  const [patientName, setPatientName] = useState(user?.name || '');
   const [doctorSearch, setDoctorSearch] = useState('');
   const [department, setDepartment] = useState('Cardiology');
 
-  // Demo calendar defaults to October 2023, Thursday the 5th selected,
-  // matching the reference design.
-  const [viewYear, setViewYear] = useState(2023);
-  const [viewMonth, setViewMonth] = useState(9); // 0-indexed: 9 = October
-  const [selectedDay, setSelectedDay] = useState(5);
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [selectedDay, setSelectedDay] = useState(today.getDate());
   const [selectedTime, setSelectedTime] = useState('10:00 AM');
   const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [myAppointments, setMyAppointments] = useState([]);
   const bannerRef = useRef(null);
+
+  useEffect(() => {
+    if (user?.name && !patientName) {
+      setPatientName(user.name);
+    }
+  }, [user]);
+
+  const loadUserAppointments = async () => {
+    if (!user?.token) return;
+    try {
+      const data = await fetchAppointments(user.token);
+      if (data.success && Array.isArray(data.appointments)) {
+        setMyAppointments(data.appointments);
+      }
+    } catch (err) {
+      console.error('Failed to load appointments:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    loadUserAppointments();
+  }, [user]);
 
   useEffect(() => {
     if (confirmed && bannerRef.current) {
@@ -88,9 +115,49 @@ export const Appointments = ({ darkMode = false }) => {
     setSelectedDay(1);
   };
 
-  const handleConfirm = () => {
-    if (!patientName.trim() || !selectedTime) return;
-    setConfirmed(true);
+  const handleConfirm = async () => {
+    if (!patientName.trim() || !selectedTime) {
+      setError('Please provide patient name and select a time slot.');
+      return;
+    }
+
+    const formattedDate = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    const payload = {
+      patientName: patientName.trim(),
+      doctor: doctorSearch.trim() || 'Dr. Sarah Connor',
+      department,
+      date: formattedDate,
+      time: selectedTime,
+      reason: 'General Consultation',
+    };
+
+    try {
+      setLoading(true);
+      setError('');
+      if (user?.token) {
+        const res = await createAppointment(payload, user.token);
+        if (res.success) {
+          setConfirmed(true);
+          await loadUserAppointments();
+        }
+      } else {
+        setConfirmed(true);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to book appointment');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = async (id) => {
+    if (!user?.token) return;
+    try {
+      await deleteAppointment(id, user.token);
+      await loadUserAppointments();
+    } catch (err) {
+      setError(err.message || 'Failed to cancel appointment');
+    }
   };
 
   const cardBg = darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-200';
@@ -117,6 +184,12 @@ export const Appointments = ({ darkMode = false }) => {
           Complete the steps below to book a consultation.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm font-medium">
+          {error}
+        </div>
+      )}
 
       {confirmed && (
         <div
@@ -362,13 +435,45 @@ export const Appointments = ({ darkMode = false }) => {
         </button>
         <button
           type="button"
+          disabled={loading}
           onClick={handleConfirm}
-          className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-xl px-6 py-3 transition"
+          className="flex items-center gap-2 bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold rounded-xl px-6 py-3 transition"
         >
-          Confirm Booking
+          {loading ? 'Booking...' : 'Confirm Booking'}
           <ArrowRightIcon className="w-4 h-4" />
         </button>
       </div>
+
+      {/* My Booked Appointments Section */}
+      {myAppointments.length > 0 && (
+        <div className={`border rounded-2xl p-6 shadow-sm transition-colors ${cardBg} mt-8`}>
+          <div className="flex items-center gap-3 mb-4">
+            <Calendar className="w-5 h-5 text-blue-600" />
+            <h2 className={`text-lg font-bold ${headingColor}`}>Your Scheduled Appointments</h2>
+          </div>
+          <div className="divide-y divide-gray-200 dark:divide-slate-800">
+            {myAppointments.map((appt) => (
+              <div key={appt._id} className="py-3 flex items-center justify-between">
+                <div>
+                  <p className={`font-semibold ${headingColor}`}>
+                    {appt.doctor} — {appt.department}
+                  </p>
+                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                    📅 {appt.date} at ⏰ {appt.time} | Status: <span className="font-semibold text-blue-500">{appt.status}</span>
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleCancel(appt._id)}
+                  className="px-3 py-1 text-xs font-bold text-rose-500 hover:bg-rose-500/10 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

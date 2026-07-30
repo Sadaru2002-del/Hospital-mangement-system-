@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import { fetchAppointments, createAppointment } from '../services/appointmentService';
 
 export const Appointments = ({ darkMode = false }) => {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState([
     { id: 1, patient: 'Sarah Jenkins', doctor: 'Dr. Sarah Connor', date: '2026-07-20', time: '09:00 AM', reason: 'Annual physical checkup', status: 'Scheduled' },
     { id: 2, patient: 'Michael Chang', doctor: 'Dr. Bruce Banner', date: '2026-07-20', time: '10:00 AM', reason: 'Flu symptoms', status: 'Completed' },
@@ -8,34 +11,85 @@ export const Appointments = ({ darkMode = false }) => {
   ]);
 
   const [formData, setFormData] = useState({
-    patient: '',
+    patient: user?.name || '',
     doctor: 'Dr. Sarah Connor',
     date: '',
     time: '',
     reason: '',
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadAppointments = async () => {
+    if (!user?.token) return;
+    try {
+      const data = await fetchAppointments(user.token);
+      if (data.success && Array.isArray(data.appointments)) {
+        const mapped = data.appointments.map((appt) => ({
+          id: appt._id,
+          patient: appt.patientName || appt.patient?.name || 'Patient',
+          doctor: appt.doctor,
+          date: appt.date,
+          time: appt.time,
+          reason: appt.reason,
+          status: appt.status,
+        }));
+        setAppointments(mapped);
+      }
+    } catch (err) {
+      console.error('Error fetching appointments:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    loadAppointments();
+  }, [user]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!formData.patient || !formData.date || !formData.time || !formData.reason) return;
-    const newAppointment = {
-      id: appointments.length + 1,
-      ...formData,
-      status: 'Scheduled',
-    };
-    setAppointments((prev) => [...prev, newAppointment]);
-    setFormData({
-      patient: '',
-      doctor: 'Dr. Sarah Connor',
-      date: '',
-      time: '',
-      reason: '',
-    });
+
+    try {
+      setLoading(true);
+      setError('');
+      if (user?.token) {
+        const payload = {
+          patientName: formData.patient,
+          doctor: formData.doctor,
+          date: formData.date,
+          time: formData.time,
+          reason: formData.reason,
+        };
+        const res = await createAppointment(payload, user.token);
+        if (res.success) {
+          await loadAppointments();
+        }
+      } else {
+        const newAppointment = {
+          id: Date.now(),
+          ...formData,
+          status: 'Scheduled',
+        };
+        setAppointments((prev) => [...prev, newAppointment]);
+      }
+
+      setFormData({
+        patient: user?.name || '',
+        doctor: 'Dr. Sarah Connor',
+        date: '',
+        time: '',
+        reason: '',
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to schedule appointment');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cardBg = darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-gray-300';
