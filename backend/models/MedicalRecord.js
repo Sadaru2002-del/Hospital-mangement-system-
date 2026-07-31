@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
 
 /**
- * MedicalRecord Schema
- * Stores clinical history, lab reports, test results, and consultation records.
+ * Sub-schema for individual lab report parameter results
  */
 const labResultSchema = new mongoose.Schema({
   parameter: {
@@ -29,8 +28,13 @@ const labResultSchema = new mongoose.Schema({
   },
 });
 
+/**
+ * MedicalRecord Schema
+ * Stores clinical history, lab reports, test results, diagnoses, and consultation records.
+ */
 const medicalRecordSchema = new mongoose.Schema(
   {
+    // ─── Patient & Doctor References ───────────────────────────
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Patient',
@@ -49,37 +53,35 @@ const medicalRecordSchema = new mongoose.Schema(
       trim: true,
       default: 'General Medicine',
     },
+
+    // ─── Record Identity & Type ──────────────────────────────────
     title: {
       type: String,
-      required: [true, 'Record title is required'],
       trim: true,
+      default: 'Medical Record',
     },
     recordType: {
       type: String,
-      required: [true, 'Record type is required'],
       enum: {
         values: ['Lab Report', 'Consultation', 'Prescription', 'Diagnostic Test', 'General History'],
         message: '{VALUE} is not a valid record type',
       },
-      default: 'Lab Report',
+      default: 'Consultation',
     },
-    date: {
-      type: Date,
-      default: Date.now,
-    },
-    status: {
-      type: String,
-      enum: {
-        values: ['Normal', 'Abnormal', 'Pending', 'Confirmed', 'Completed'],
-        message: '{VALUE} is not a valid status option',
-      },
-      default: 'Normal',
-    },
-    labResults: [labResultSchema],
+
+    // ─── Clinical & Diagnostic Details ─────────────────────────
     diagnosis: {
       type: String,
       trim: true,
     },
+    symptoms: {
+      type: [String],
+    },
+    prescription: {
+      type: String,
+      trim: true,
+    },
+    labResults: [labResultSchema],
     notes: {
       type: String,
       trim: true,
@@ -88,11 +90,36 @@ const medicalRecordSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    // ─── Status ──────────────────────────────────────────────────
+    status: {
+      type: String,
+      enum: {
+        values: ['Normal', 'Abnormal', 'Pending', 'Confirmed', 'Completed', 'active', 'resolved', 'chronic'],
+        message: '{VALUE} is not a valid status',
+      },
+      default: 'Normal',
+    },
+
+    // ─── Record Dates ────────────────────────────────────────────
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+    dateOfVisit: {
+      type: Date,
+      default: Date.now,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+// ─── Indexes for faster queries ──────────────────────────────────
+medicalRecordSchema.index({ patient: 1, createdAt: -1 });
+medicalRecordSchema.index({ doctor: 1, createdAt: -1 });
+medicalRecordSchema.index({ status: 1 });
 
 const MedicalRecord = mongoose.model('MedicalRecord', medicalRecordSchema);
 export default MedicalRecord;
