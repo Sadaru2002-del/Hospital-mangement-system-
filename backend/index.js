@@ -5,6 +5,8 @@ import connectDB from "./config/db.js";
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
+import medicalRecordRoutes from "./routes/medicalRecordRoutes.js";
+import prescriptionRoutes from "./routes/prescriptionRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -23,6 +25,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes || authRoutes);
 app.use("/api/appointments", appointmentRoutes);
+app.use("/api/medical-records", medicalRecordRoutes);
+app.use("/api/prescriptions", prescriptionRoutes);
 
 // Health check
 app.get("/api", (req, res) => {
