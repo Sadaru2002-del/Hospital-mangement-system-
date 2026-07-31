@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db.js";
+
 import userRoutes from "./routes/userRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
@@ -11,12 +12,12 @@ import prescriptionRoutes from "./routes/prescriptionRoutes.js";
 // Load environment variables
 dotenv.config();
 
-// Connect to MongoDB
+// Connect to database
 connectDB();
 
 const app = express();
 
-// Middlewares
+// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -28,11 +29,19 @@ app.use("/api/appointments", appointmentRoutes);
 app.use("/api/medical-records", medicalRecordRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
 
-// Health check
+// Health check (combined)
 app.get("/api", (req, res) => {
   res.json({
     success: true,
     message: "Hospital Management API is running...",
+  });
+});
+
+// Root route status check
+app.get("/", (req, res) => {
+  res.json({
+    status: "success",
+    message: "Hospital Management System API is running",
   });
 });
 
