@@ -1,9 +1,16 @@
+import Stripe from "stripe";
 import Payment from "../models/Payment.js";
 import Appointment from "../models/Appointment.js";
 import crypto from "crypto";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Initialize stripe with secret key from environment variables
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_placeholder");
 
 /**
- * @desc    Process / Create a new payment
+ * @desc    Process / Create a new payment directly
  * @route   POST /api/payments
  * @access  Private (Patient, Staff, Admin)
  */
@@ -22,7 +29,6 @@ export const processPayment = async (req, res) => {
       notes,
     } = req.body;
 
-    // Default patient to logged-in user if not explicitly provided or if patient role
     const targetPatientId = req.user.role === "patient" ? req.user._id : (patientId || req.user._id);
 
     if (!amount || amount <= 0) {
@@ -36,7 +42,6 @@ export const processPayment = async (req, res) => {
     const randomHex = crypto.randomBytes(4).toString("hex").toUpperCase();
     const transactionId = `TXN-${Date.now()}-${randomHex}`;
 
-    // Mask card details if provided
     let sanitizedCardDetails;
     if (paymentMethod === "card" && cardDetails) {
       const cardNumberClean = (cardDetails.cardNumber || "").replace(/\s+/g, "");
@@ -48,7 +53,6 @@ export const processPayment = async (req, res) => {
       };
     }
 
-    // Default billing items if none provided
     const items = billingItems && billingItems.length > 0
       ? billingItems
       : [{ description: "Medical Consultation & Care Services", category: "Consultation", amount }];
@@ -62,6 +66,7 @@ export const processPayment = async (req, res) => {
       currency,
       paymentMethod,
       status: "completed",
+      paymentStatus: "completed",
       cardDetails: sanitizedCardDetails,
       insuranceDetails: paymentMethod === "insurance" ? insuranceDetails : undefined,
       billingItems: items,
@@ -69,7 +74,6 @@ export const processPayment = async (req, res) => {
       paidAt: new Date(),
     });
 
-    // If linked to an appointment, update appointment payment status if applicable
     if (appointmentId) {
       await Appointment.findByIdAndUpdate(appointmentId, {
         isPaid: true,
@@ -93,6 +97,93 @@ export const processPayment = async (req, res) => {
       message: "Failed to process payment",
       error: error.message,
     });
+  }
+};
+
+/**
+ * @desc    Create a Stripe payment intent
+ * @route   POST /api/payments/create-intent
+ * @access  Private
+ */
+export const createPaymentIntent = async (req, res) => {
+  try {
+    const { amount, currency, appointmentId } = req.body;
+    const userId = req.user._id;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100),
+      currency: currency || "lkr",
+      metadata: {
+        userId: userId.toString(),
+        appointmentId: appointmentId || "general",
+      },
+    });
+
+    const payment = new Payment({
+      patient: userId,
+      appointment: appointmentId || null,
+      amount: amount,
+      status: "pending",
+      paymentStatus: "pending",
+      transactionId: paymentIntent.id,
+      paymentMethod: "online",
+    });
+
+    await payment.save();
+
+    res.status(200).json({
+      clientSecret: paymentIntent.client_secret,
+      paymentId: payment._id,
+    });
+  } catch (error) {
+    console.error("Error in createPaymentIntent:", error);
+    res.status(500).json({ message: error.message || "Failed to create payment intent" });
+  }
+};
+
+/**
+ * @desc    Verify Stripe payment success
+ * @route   POST /api/payments/verify
+ * @access  Private
+ */
+export const verifyPayment = async (req, res) => {
+  try {
+    const { paymentId, paymentIntentId } = req.body;
+
+    if (!paymentId || !paymentIntentId) {
+      return res.status(400).json({ message: "Missing payment information" });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.status === "succeeded") {
+      const payment = await Payment.findById(paymentId);
+      if (!payment) {
+        return res.status(404).json({ message: "Payment record not found" });
+      }
+
+      payment.status = "completed";
+      payment.paymentStatus = "completed";
+      await payment.save();
+
+      if (payment.appointment) {
+        await Appointment.findByIdAndUpdate(payment.appointment, {
+          isPaid: true,
+          paymentStatus: "Paid",
+        });
+      }
+
+      return res.status(200).json({ success: true, message: "Payment verified successfully", payment });
+    } else {
+      return res.status(400).json({ success: false, message: "Payment not completed in Stripe", status: paymentIntent.status });
+    }
+  } catch (error) {
+    console.error("Error in verifyPayment:", error);
+    res.status(500).json({ message: error.message || "Failed to verify payment" });
   }
 };
 
@@ -123,7 +214,7 @@ export const getMyPayments = async (req, res) => {
 };
 
 /**
- * @desc    Get patient billing summary (totals, history, active bill)
+ * @desc    Get patient billing summary
  * @route   GET /api/payments/summary
  * @access  Private (Patient, Staff, Admin)
  */
@@ -134,7 +225,6 @@ export const getBillingSummary = async (req, res) => {
     const payments = await Payment.find({ patient: targetPatientId, status: "completed" });
     const totalPaid = payments.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
-    // Mock active/pending bill items if no pending payments found
     const pendingPayments = await Payment.find({ patient: targetPatientId, status: "pending" });
     const outstandingAmount = pendingPayments.reduce((acc, curr) => acc + (curr.amount || 0), 0);
 
@@ -159,7 +249,7 @@ export const getBillingSummary = async (req, res) => {
 };
 
 /**
- * @desc    Get all payment records (Filterable)
+ * @desc    Get all payment records
  * @route   GET /api/payments
  * @access  Private (Admin, Staff)
  */
@@ -210,7 +300,6 @@ export const getPaymentById = async (req, res) => {
       });
     }
 
-    // Restrict patients to their own payments
     if (req.user.role === "patient" && payment.patient._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -257,6 +346,7 @@ export const updatePaymentStatus = async (req, res) => {
     }
 
     payment.status = status;
+    payment.paymentStatus = status;
     if (notes) payment.notes = notes;
     await payment.save();
 

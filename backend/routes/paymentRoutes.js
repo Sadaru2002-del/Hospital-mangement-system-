@@ -1,6 +1,8 @@
 import express from "express";
 import {
   processPayment,
+  createPaymentIntent,
+  verifyPayment,
   getMyPayments,
   getBillingSummary,
   getPayments,
@@ -13,6 +15,10 @@ const router = express.Router();
 
 // All payment routes require JWT authentication
 router.use(protect);
+
+// Stripe payment integration endpoints
+router.post("/create-intent", createPaymentIntent);
+router.post("/verify", verifyPayment);
 
 // Patient routes for personal payment history & billing summary
 router.get("/my", getMyPayments);

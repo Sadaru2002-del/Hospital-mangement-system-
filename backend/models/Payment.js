@@ -19,10 +19,11 @@ const billingItemSchema = new mongoose.Schema({
 
 const paymentSchema = new mongoose.Schema(
   {
+    // Reference Details
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: [true, "Patient reference is required"],
     },
     appointment: {
       type: mongoose.Schema.Types.ObjectId,
@@ -38,11 +39,12 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       unique: true,
       required: true,
+      trim: true,
     },
     amount: {
       type: Number,
-      required: true,
-      min: 0,
+      required: [true, "Payment amount is required"],
+      min: [0, "Payment amount cannot be negative"],
     },
     currency: {
       type: String,
@@ -50,10 +52,23 @@ const paymentSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["card", "insurance", "cash", "bank_transfer"],
+      required: [true, "Payment method is required"],
+      enum: {
+        values: ["cash", "card", "online", "insurance", "bank_transfer"],
+        message: "{VALUE} is not a valid payment method",
+      },
       default: "card",
     },
     status: {
+      type: String,
+      required: [true, "Payment status is required"],
+      enum: {
+        values: ["pending", "completed", "failed", "refunded"],
+        message: "{VALUE} is not a valid payment status",
+      },
+      default: "completed",
+    },
+    paymentStatus: {
       type: String,
       enum: ["pending", "completed", "failed", "refunded"],
       default: "completed",
@@ -69,8 +84,17 @@ const paymentSchema = new mongoose.Schema(
       claimId: String,
     },
     billingItems: [billingItemSchema],
+    description: {
+      type: String,
+      trim: true,
+      maxlength: [500, "Description cannot exceed 500 characters"],
+    },
     notes: {
       type: String,
+    },
+    paymentDate: {
+      type: Date,
+      default: Date.now,
     },
     paidAt: {
       type: Date,
@@ -81,6 +105,11 @@ const paymentSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Indexes for faster queries
+paymentSchema.index({ patient: 1, paymentDate: -1 });
+paymentSchema.index({ status: 1 });
+paymentSchema.index({ transactionId: 1 });
 
 const Payment = mongoose.model("Payment", paymentSchema);
 
