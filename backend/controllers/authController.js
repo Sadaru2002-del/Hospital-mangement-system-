@@ -199,3 +199,24 @@ export const updateUserProfile = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+// @desc    Get all registered users
+// @route   GET /api/users or GET /api/auth/users
+// @access  Private (Admin only)
+export const getAllUsers = async (req, res) => {
+  try {
+    const { role } = req.query;
+    const filter = role ? { role } : {};
+
+    const users = await User.find(filter).select("-password").sort({ createdAt: -1 });
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      users,
+    });
+  } catch (error) {
+    console.error("Get users error:", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

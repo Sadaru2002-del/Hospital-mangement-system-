@@ -35,11 +35,37 @@ const userSchema = new mongoose.Schema(
       type: String,
       validate: {
         validator: function(v) {
-          // simple regex for validating basic phone numbers (can be adjusted based on region)
           return !v || /^[+]?[(]?[0-9]{1,4}[)]?[-\s./0-9]*$/.test(v);
         },
         message: props => `${props.value} is not a valid phone number!`
       }
+    },
+    bio: {
+      type: String,
+      default: '',
+    },
+    avatar: {
+      type: String,
+      default: '',
+    },
+    address: {
+      type: String,
+      default: '',
+    },
+    emergencyContact: {
+      type: String,
+      default: '',
+    },
+    bloodGroup: {
+      type: String,
+      default: '',
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+    specialization: {
+      type: String,
+      default: '',
     },
   },
   {
@@ -65,6 +91,10 @@ userSchema.pre('save', async function (next) {
 
 // Method to compare passwords during authentication
 userSchema.methods.comparePassword = async function (candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.methods.matchPassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

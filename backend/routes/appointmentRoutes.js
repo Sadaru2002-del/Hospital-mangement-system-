@@ -8,7 +8,7 @@ import {
   cancelAppointment,
   deleteAppointment,
 } from "../controllers/appointmentController.js";
-import { protect } from "../middleware/authMiddleware.js";
+import { protect, authorizeRoles } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -23,7 +23,7 @@ router
   .route("/:id")
   .get(getAppointmentById)
   .put(updateAppointment)
-  .delete(deleteAppointment);
+  .delete(authorizeRoles("admin", "doctor", "receptionist"), deleteAppointment);
 
 export default router;
 

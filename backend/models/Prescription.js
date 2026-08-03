@@ -1,36 +1,38 @@
-import mongoose from "mongoose";
-import generatePrescriptionId from "../utils/generatePrescriptionId.js";
+import mongoose from 'mongoose';
 
 /**
  * Medication sub-schema
- * Each prescription can contain one or more prescribed medications.
+ * Stores medication details inside a digital prescription.
  */
 const medicationSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Medicine name is required"],
+      required: [true, 'Medication name is required'],
       trim: true,
     },
-    // e.g. "Oral Capsule", "Oral Tablet", "Non-drowsy Antihistamine"
     type: {
       type: String,
       trim: true,
-      default: "",
+      default: 'Oral Tablet',
     },
     dosage: {
       type: String,
-      required: [true, "Dosage is required"],
+      required: [true, 'Dosage is required'],
       trim: true,
     },
     frequency: {
       type: String,
-      required: [true, "Frequency is required"],
+      required: [true, 'Frequency is required'],
       trim: true,
     },
     duration: {
       type: String,
-      required: [true, "Duration is required"],
+      required: [true, 'Duration is required'],
+      trim: true,
+    },
+    instructions: {
+      type: String,
       trim: true,
     },
   },
@@ -39,94 +41,77 @@ const medicationSchema = new mongoose.Schema(
 
 /**
  * Prescription Schema (e-Prescription)
- * Represents a digitally issued prescription linking a doctor, a patient,
- * and (optionally) the appointment it was issued during.
  */
 const prescriptionSchema = new mongoose.Schema(
   {
-    // Human-readable identifier printed on the prescription document
     prescriptionId: {
       type: String,
       unique: true,
       index: true,
+      trim: true,
     },
-
-    // Reference to the patient (ObjectId ref to User/Patient, kept Mixed
-    // to match the same flexible pattern used by the Appointment model)
     patient: {
       type: mongoose.Schema.Types.Mixed,
-      ref: "User",
-      required: [true, "A prescription must belong to a patient"],
+      ref: 'Patient',
+      required: [true, 'A prescription must belong to a patient'],
     },
     patientName: {
       type: String,
-      required: [true, "Patient name is required"],
       trim: true,
     },
-    // Display string, e.g. "May 14, 1982 (41y)"
     patientDob: {
       type: String,
       trim: true,
     },
-
-    // Reference to the doctor who issued the prescription
     doctor: {
       type: mongoose.Schema.Types.Mixed,
-      ref: "User",
-      required: [true, "A prescription must be issued by a doctor"],
+      ref: 'User',
+    },
+    doctorName: {
+      type: String,
+      trim: true,
     },
     physicianName: {
       type: String,
-      required: [true, "Physician name is required"],
       trim: true,
     },
     physicianSpecialty: {
       type: String,
       trim: true,
-      default: "",
+      default: '',
     },
-    // National Provider Identifier
     physicianNpi: {
       type: String,
       trim: true,
-      default: "",
+      default: '',
     },
-
-    // Optional link back to the appointment this prescription was issued during
     appointment: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Appointment",
+      ref: 'Appointment',
       default: null,
     },
-
-    // Snapshot of the issuing hospital/clinic details at time of issuance
     hospital: {
-      name: { type: String, default: "Medimate Central Hospital" },
-      address: { type: String, trim: true, default: "" },
-      phone: { type: String, trim: true, default: "" },
-      email: { type: String, trim: true, default: "" },
+      name: { type: String, default: 'Medimate Central Hospital' },
+      address: { type: String, trim: true, default: '1200 Healthcare Plaza, Colombo' },
+      phone: { type: String, trim: true, default: '+94 00876500' },
+      email: { type: String, trim: true, default: 'contact@medsys.hospital' },
     },
-
     medications: {
       type: [medicationSchema],
       validate: {
         validator: (arr) => Array.isArray(arr) && arr.length > 0,
-        message: "At least one medication is required",
+        message: 'At least one medication is required',
       },
     },
-
-    // Free-form doctor's instructions/notes shown on the prescription
     instructions: {
       type: [String],
       default: [],
     },
-
     status: {
       type: String,
-      enum: ["active", "completed", "cancelled"],
-      default: "active",
+      enum: ['Active', 'active', 'Fulfilled', 'completed', 'Cancelled', 'cancelled', 'Expired'],
+      default: 'Active',
     },
-
     issuedDate: {
       type: Date,
       default: Date.now,
@@ -135,11 +120,13 @@ const prescriptionSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-
-    // Cancellation details (mirrors Appointment's cancellation pattern)
+    forwardedToPharmacy: {
+      type: Boolean,
+      default: false,
+    },
     cancelledBy: {
       type: mongoose.Schema.Types.Mixed,
-      ref: "User",
+      ref: 'User',
       default: null,
     },
     cancellationReason: {
@@ -152,16 +139,20 @@ const prescriptionSchema = new mongoose.Schema(
   }
 );
 
+// Compound indexes
 prescriptionSchema.index({ patient: 1, createdAt: -1 });
 prescriptionSchema.index({ doctor: 1, createdAt: -1 });
 
-// Auto-generate a human-readable prescriptionId before first save
-prescriptionSchema.pre("validate", function (next) {
+// Pre-save hook to generate unique RX identifier if not present
+prescriptionSchema.pre('save', function (next) {
   if (!this.prescriptionId) {
-    this.prescriptionId = generatePrescriptionId();
+    const year = new Date().getFullYear();
+    const randomHex = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    this.prescriptionId = `RX-${year}-${randomNum}-${randomHex}`;
   }
   next();
 });
 
-const Prescription = mongoose.model("Prescription", prescriptionSchema);
+const Prescription = mongoose.model('Prescription', prescriptionSchema);
 export default Prescription;

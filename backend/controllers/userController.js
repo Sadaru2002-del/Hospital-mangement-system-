@@ -4,4 +4,5 @@ export {
   getUserProfile,
   updateUserProfile,
   getMe,
+  getAllUsers,
 } from './authController.js';
