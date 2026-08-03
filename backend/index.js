@@ -8,6 +8,8 @@ import authRoutes from "./routes/authRoutes.js";
 import appointmentRoutes from "./routes/appointmentRoutes.js";
 import medicalRecordRoutes from "./routes/medicalRecordRoutes.js";
 import prescriptionRoutes from "./routes/prescriptionRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -25,9 +27,12 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes || authRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/profiles", profileRoutes);
 app.use("/api/appointments", appointmentRoutes);
 app.use("/api/medical-records", medicalRecordRoutes);
 app.use("/api/prescriptions", prescriptionRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Health check (combined)
 app.get("/api", (req, res) => {
